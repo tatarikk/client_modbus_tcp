@@ -1,0 +1,127 @@
+from pyModbusTCP.client import ModbusClient
+import time
+import sys
+
+
+class leg():
+    def __init__(self, device_ip):
+        self.connectToSocket(device_ip)
+        self.introduce()
+        self.mainMenu()
+
+    def connectToSocket(self, device_ip):
+        self.client = ModbusClient(host=device_ip, port=502, debug=True)
+        self.client.open()
+        a = False
+        while a == False:
+            print("Client status:", self.client.is_open)
+            if self.client.is_open == False:
+                self.client.open()
+                print("Client status:", self.client.is_open)
+            else:
+                a == True
+                return
+
+    def introduce(self):
+        print("RusSlide tripod  ModbusTCP test environment")
+
+    def getRegState(self, reg_id):
+        responce = None
+        while responce == None:
+            responce = self.client.read_holding_registers(reg_id)
+            if responce:
+                print("responce = ", responce)
+                return responce
+            else:
+                print("Unable to load register")
+                print("responce = ", responce)
+
+    def getAllLegStates(self):
+        print("Нога 1 = ", self.getRegState(1))
+        time.sleep(0.001)
+        print("Нога 2 = ", self.getRegState(2))
+        time.sleep(0.001)
+        print("Нога 3 = ", self.getRegState(3))
+        time.sleep(0.001)
+
+    def writeState(self, reg, value):
+        self.client.write_single_register(reg, value)
+        print("Return", self.client.last_error, self.client.last_error_as_txt)
+        if self.client.last_error != 7:
+            self.writeState(reg, value)
+
+    def mainMenu(self):
+        menuItem = int(input("Выберите:\n \
+                         1. Получить состояние штатива \n \
+                         2. Переместить выбранную ногу \n \
+                         3. Переместить все ноги\n \
+                         4. Запустить процедуру выравнивания\n \
+                         0. Выход    "))
+        if (menuItem == 0):
+            sys.exit()
+        elif (menuItem == 1):
+            self.getAllLegStates()
+            self.mainMenu()
+        elif (menuItem == 2):
+            leg_id = int(input("Введите ID ноги (1-3) или 0 для возврата "))
+            if leg_id < 1 or leg_id > 3:
+                print("Введите правильный идентификатор ", leg_id)
+                self.mainMenu()
+            print("Выбрана нога:", leg_id)
+            move_to = int(input("Введите на сколько перемещаться. Для возврата в меню 0\n"))
+            if move_to == 0:
+                self.mainMenu()
+            else:
+                leg_id = leg_id + 3
+                self.writeState(leg_id, move_to)
+                self.mainMenu()
+        elif (menuItem == 3):
+            move_to = int(input("Введите на сколько перемещаться. Для возврата в меню 0\n"))
+            if move_to == 0:
+                self.mainMenu()
+            else:
+                self.writeState(4, move_to)
+                self.writeState(5, move_to)
+                self.writeState(6, move_to)
+                self.mainMenu()
+        elif (menuItem == 4):
+            print("Запускаем процедуру выравнивания")
+            self.writeState(40, 1)
+            self.mainMenu()
+
+        def coiltest(self):
+            ## Чтение coils
+            print(self.client.read_coils(0, 10))
+            time.sleep(0.5)
+            ## Запись coils
+            print(self.client.write_single_coil(1, 0))
+            time.sleep(0.5)
+            print(self.client.read_coils(0, 10))
+            time.sleep(0.5)
+            ## Запись coils
+            print(self.client.write_single_coil(1, 1))
+            time.sleep(0.5)
+
+        def registertest(self):
+            result = self.client.read_holding_registers(1, 10)
+            if result:
+                print('reg ad #0 to 9: %s' % result)
+                print(result[0])
+            else:
+                print('unable to read registers')
+
+            ##client.write_single_register(1,999)
+            ##client.write_single_register(2,999)
+            ##client.write_single_register(3,999)
+
+            try:
+
+                print("\n")
+                time.sleep(0.5)
+            except:
+                print("Shutdown")
+
+
+if __name__ == "__main__":
+    # leg0 = leg("192.168.1.80")
+    leg0 = leg("192.168.1.54")
